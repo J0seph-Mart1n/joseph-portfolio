@@ -43,15 +43,38 @@
 
 /* Workspaces */
 .workspaces {
+  display: block;
+  width: 144px;
+  height: 32px;
+  padding: 4px;
+  position: relative;
+  overflow: hidden;
+}
+
+.workspacesInner {
   display: flex;
   gap: 4px;
-  padding: 4px;
+  height: 100%;
+  transition: transform 0.3s cubic-bezier(0.25, 1, 0.5, 1);
+}
+
+.glider {
+  position: absolute;
+  top: 4px;
+  left: 4px;
+  width: 24px;
+  height: 24px;
+  background: #89b4fa; /* Blue accent */
+  border-radius: 6px;
+  transition: transform 0.3s cubic-bezier(0.25, 1, 0.5, 1);
+  z-index: 0;
 }
 
 .workspace {
   width: 24px;
   height: 24px;
   display: flex;
+  flex-shrink: 0;
   align-items: center;
   justify-content: center;
   border-radius: 6px;
@@ -59,6 +82,8 @@
   transition: all 0.2s ease;
   color: #a6adc8;
   font-weight: 500;
+  position: relative;
+  z-index: 1;
 }
 
 .workspace:hover {
@@ -67,7 +92,6 @@
 }
 
 .workspace.active {
-  background: #89b4fa; /* Blue accent */
   color: #1e1e2e;
   font-weight: bold;
 }

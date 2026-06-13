@@ -43,8 +43,16 @@ const ClockIcon = () => (
 );
 
 export default function Waybar() {
+  const [activeWorkspace, setActiveWorkspace] = useState(1);
   const [time, setTime] = useState('');
   const [date, setDate] = useState('');
+
+  // Calculate the visible window of workspaces (we want to show 5 at a time)
+  // Max visibleStart is 5, so the window is [5, 6, 7, 8, 9]
+  const visibleStart = Math.max(1, Math.min(activeWorkspace - 2, 5));
+
+  // The glider's position within the 5 visible slots
+  const gliderIndex = activeWorkspace - visibleStart;
 
   useEffect(() => {
     const updateTime = () => {
@@ -66,19 +74,43 @@ export default function Waybar() {
     return () => clearInterval(interval);
   }, []);
 
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      // Check for Ctrl (ctrlKey) + number 1-9
+      if (e.ctrlKey && e.key >= '1' && e.key <= '9') {
+        e.preventDefault();
+        setActiveWorkspace(parseInt(e.key, 10));
+      }
+    };
+
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, []);
+
   return (
     <div className={styles.waybarContainer}>
       {/* Left: Workspaces */}
       <div className={styles.moduleGroup}>
         <div className={`${styles.module} ${styles.workspaces}`}>
-          {[1, 2, 3, 4, 5].map((ws) => (
-            <div 
-              key={ws} 
-              className={`${styles.workspace} ${ws === 1 ? styles.active : ''}`}
-            >
-              {ws}
-            </div>
-          ))}
+          {/* Glider for active workspace animation */}
+          <div 
+            className={styles.glider} 
+            style={{ transform: `translateX(${gliderIndex * 28}px)` }} 
+          />
+          <div 
+            className={styles.workspacesInner}
+            style={{ transform: `translateX(${-(visibleStart - 1) * 28}px)` }}
+          >
+            {[1, 2, 3, 4, 5, 6, 7, 8, 9].map((ws) => (
+              <div 
+                key={ws} 
+                className={`${styles.workspace} ${ws === activeWorkspace ? styles.active : ''}`}
+                onClick={() => setActiveWorkspace(ws)}
+              >
+                {ws}
+              </div>
+            ))}
+          </div>
         </div>
       </div>
 
