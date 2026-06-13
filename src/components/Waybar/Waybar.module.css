@@ -1,0 +1,98 @@
+.waybarContainer {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  width: calc(100% - 20px);
+  margin: 10px;
+  padding: 4px 10px;
+  background: rgba(30, 30, 46, 0.7); /* Catppuccin Mocha Base */
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
+  border-radius: 12px;
+  border: 1px solid rgba(255, 255, 255, 0.05);
+  color: #cdd6f4; /* Catppuccin Mocha Text */
+  font-family: ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+  font-size: 13px;
+  position: absolute;
+  top: 0;
+  left: 0;
+  z-index: 1000;
+  box-shadow: 0 4px 15px rgba(0, 0, 0, 0.4);
+}
+
+.moduleGroup {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+}
+
+.module {
+  background: rgba(49, 50, 68, 0.8); /* Surface 0 */
+  padding: 4px 10px;
+  border-radius: 8px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  transition: all 0.2s ease-in-out;
+  cursor: default;
+}
+
+.module:hover {
+  background: rgba(69, 71, 90, 0.9); /* Surface 1 */
+}
+
+/* Workspaces */
+.workspaces {
+  display: flex;
+  gap: 4px;
+  padding: 4px;
+}
+
+.workspace {
+  width: 24px;
+  height: 24px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 6px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  color: #a6adc8;
+  font-weight: 500;
+}
+
+.workspace:hover {
+  background: rgba(255, 255, 255, 0.1);
+  color: #cdd6f4;
+}
+
+.workspace.active {
+  background: #89b4fa; /* Blue accent */
+  color: #1e1e2e;
+  font-weight: bold;
+}
+
+/* Specific Modules */
+.clock {
+  color: #cdd6f4;
+  font-weight: 600;
+  background: rgba(243, 139, 168, 0.2); /* Red tint */
+  border: 1px solid rgba(243, 139, 168, 0.3);
+}
+
+.battery {
+  color: #a6e3a1; /* Green accent */
+}
+
+.network {
+  color: #89b4fa; /* Blue accent */
+}
+
+.pulseaudio {
+  color: #f9e2af; /* Yellow accent */
+}
+
+.window {
+  color: #cba6f7; /* Mauve accent */
+  font-weight: 500;
+}
