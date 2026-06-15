@@ -29,9 +29,30 @@ const initialLayout: LayoutNode = {
   }
 };
 
+export type TerminalState = {
+  visibleLines: number;
+  activeTab: number;
+  isActive: boolean;
+};
+
 export default function Home() {
   const [layout, setLayout] = useState<LayoutNode>(initialLayout);
   
+  const [terminalStates, setTerminalStates] = useState<Record<string, TerminalState>>({
+    "term-1": { visibleLines: 0, activeTab: 0, isActive: true },
+    "term-2": { visibleLines: 0, activeTab: 0, isActive: true },
+    "term-3": { visibleLines: 0, activeTab: 0, isActive: true },
+  });
+
+  const [draggedTerminalId, setDraggedTerminalId] = useState<string | null>(null);
+
+  const updateTerminalState = (id: string, updates: Partial<TerminalState>) => {
+    setTerminalStates(prev => ({
+      ...prev,
+      [id]: { ...prev[id], ...updates }
+    }));
+  };
+
   // Resizing state
   const [resizingState, setResizingState] = useState<{
     hSplitId?: string;
@@ -63,27 +84,35 @@ export default function Home() {
   }, []);
 
   // Handle Drag & Drop to split/rearrange tiles
+  useEffect(() => {
+    const onBspDrop = (e: Event) => {
+      const { targetId, zone, droppedId } = (e as CustomEvent).detail;
+      
+      setLayout((prev) => {
+        let newLayout = removeNode(prev, droppedId);
+        if (!newLayout) return prev;
+        return splitNode(newLayout, targetId, droppedId, zone) || newLayout;
+      });
+      setDraggedTerminalId(null);
+    };
+    window.addEventListener('bsp-drop', onBspDrop);
+    return () => window.removeEventListener('bsp-drop', onBspDrop);
+  }, []);
+
   const handleDragStart = (e: React.DragEvent, terminalId: string) => {
     e.dataTransfer.setData("text/plain", terminalId);
+    e.dataTransfer.effectAllowed = "move";
+    draggedTerminalIdLocal = terminalId;
+    
+    // Defer state update so browser drag ghost captures the visible element first
+    setTimeout(() => {
+      setDraggedTerminalId(terminalId);
+    }, 0);
   };
 
-  useEffect(() => {
-    const handleDropEvent = (e: any) => {
-      const { targetId, zone, droppedId } = e.detail;
-      
-      let newLayout = removeNode(layout, droppedId);
-      if (newLayout) {
-        newLayout = splitNode(newLayout, targetId, droppedId, zone);
-        setLayout(newLayout);
-      }
-    };
-    
-    window.addEventListener('bsp-drop', handleDropEvent);
-    return () => window.removeEventListener('bsp-drop', handleDropEvent);
-  }, [layout]);
-
-  const handleDrop = (targetId: string, zone: DropZone) => {
-    // Handled by custom event
+  const handleDragEnd = () => {
+    draggedTerminalIdLocal = null;
+    setDraggedTerminalId(null);
   };
 
   // Resize Dragging
@@ -141,8 +170,12 @@ export default function Home() {
       >
         <LayoutRenderer 
           node={layout} 
+          terminalStates={terminalStates}
+          updateTerminalState={updateTerminalState}
           onDragStart={handleDragStart}
+          onDragEnd={handleDragEnd}
           onDrop={(targetId, zone) => {}}
+          draggedTerminalId={draggedTerminalId}
           onResizeStart={(e, terminalId) => {
             if (e.ctrlKey && e.button === 2) {
               e.preventDefault();
@@ -164,19 +197,26 @@ export default function Home() {
   );
 }
 
-// Global variable to hold drag payload since onDrop doesn't have the DragEvent
-let draggedTerminalId: string | null = null;
+let draggedTerminalIdLocal: string | null = null;
 
 const LayoutRenderer = ({ 
   node, 
+  terminalStates,
+  updateTerminalState,
   onDragStart, 
   onDrop,
-  onResizeStart 
+  onDragEnd,
+  onResizeStart,
+  draggedTerminalId
 }: { 
   node: LayoutNode;
+  terminalStates: Record<string, TerminalState>;
+  updateTerminalState: (id: string, updates: Partial<TerminalState>) => void;
   onDragStart: (e: React.DragEvent, id: string) => void;
   onDrop: (targetId: string, zone: DropZone) => void;
+  onDragEnd: () => void;
   onResizeStart: (e: React.MouseEvent, id: string) => void;
+  draggedTerminalId: string | null;
 }) => {
   if (node.type === "leaf") {
     return (
@@ -186,29 +226,36 @@ const LayoutRenderer = ({
       >
         <Terminal 
           terminalId={node.terminalId} 
-          onDragStart={(e, id) => {
-            draggedTerminalId = id;
-            onDragStart(e, id);
-          }} 
+          state={terminalStates[node.terminalId]}
+          updateState={(updates) => updateTerminalState(node.terminalId, updates)}
+          onDragStart={onDragStart} 
+          onDragEnd={onDragEnd}
           onDrop={(targetId, zone) => {
-            if (draggedTerminalId && draggedTerminalId !== targetId) {
-               // Fire event via window to safely access state, or pass a handler that captures it.
-               window.dispatchEvent(new CustomEvent('bsp-drop', { detail: { targetId, zone, droppedId: draggedTerminalId } }));
+            if (draggedTerminalIdLocal && draggedTerminalIdLocal !== targetId) {
+               window.dispatchEvent(new CustomEvent('bsp-drop', { detail: { targetId, zone, droppedId: draggedTerminalIdLocal } }));
             }
-            draggedTerminalId = null;
           }} 
         />
       </div>
     );
   }
 
+  const isFirstDragged = node.first.type === "leaf" && node.first.terminalId === draggedTerminalId;
+  const isSecondDragged = node.second.type === "leaf" && node.second.terminalId === draggedTerminalId;
+
   return (
     <div className={`w-full h-full flex ${node.direction === "horizontal" ? "flex-row" : "flex-col"} gap-[8px]`}>
-      <div className="transition-all duration-75 ease-out min-w-0 min-h-0" style={{ flex: `${node.ratio} 1 0%` }}>
-        <LayoutRenderer node={node.first} onDragStart={onDragStart} onDrop={onDrop} onResizeStart={onResizeStart} />
+      <div 
+        className="transition-all duration-300 ease-out min-w-0 min-h-0" 
+        style={isFirstDragged ? { position: 'absolute', opacity: 0, pointerEvents: 'none', zIndex: -1 } : { flex: `${node.ratio} 1 0%` }}
+      >
+        <LayoutRenderer node={node.first} terminalStates={terminalStates} updateTerminalState={updateTerminalState} onDragStart={onDragStart} onDrop={onDrop} onDragEnd={onDragEnd} onResizeStart={onResizeStart} draggedTerminalId={draggedTerminalId} />
       </div>
-      <div className="transition-all duration-75 ease-out min-w-0 min-h-0" style={{ flex: `${100 - node.ratio} 1 0%` }}>
-        <LayoutRenderer node={node.second} onDragStart={onDragStart} onDrop={onDrop} onResizeStart={onResizeStart} />
+      <div 
+        className="transition-all duration-300 ease-out min-w-0 min-h-0" 
+        style={isSecondDragged ? { position: 'absolute', opacity: 0, pointerEvents: 'none', zIndex: -1 } : { flex: `${100 - node.ratio} 1 0%` }}
+      >
+        <LayoutRenderer node={node.second} terminalStates={terminalStates} updateTerminalState={updateTerminalState} onDragStart={onDragStart} onDrop={onDrop} onDragEnd={onDragEnd} onResizeStart={onResizeStart} draggedTerminalId={draggedTerminalId} />
       </div>
     </div>
   );

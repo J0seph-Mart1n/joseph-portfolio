@@ -53,16 +53,26 @@ interface TerminalLine {
   delay?: number;
 }
 
+import type { TerminalState } from "@/app/page";
+
 interface TerminalProps {
   terminalId: string;
   onDragStart: (e: React.DragEvent, id: string) => void;
   onDrop: (targetId: string, zone: DropZone) => void;
+  onDragEnd?: () => void;
+  state: TerminalState;
+  updateState: (updates: Partial<TerminalState>) => void;
 }
 
-export default function Terminal({ terminalId, onDragStart, onDrop }: TerminalProps) {
-  const [isActive, setIsActive] = useState(true);
-  const [visibleLines, setVisibleLines] = useState(0);
-  const [activeTab, setActiveTab] = useState(0);
+export default function Terminal({ terminalId, onDragStart, onDrop, onDragEnd, state, updateState }: TerminalProps) {
+  const { isActive, visibleLines, activeTab } = state || { isActive: true, visibleLines: 0, activeTab: 0 };
+  
+  const setIsActive = (val: boolean) => updateState({ isActive: val });
+  const setVisibleLines = (updater: number | ((prev: number) => number)) => {
+    updateState({ visibleLines: typeof updater === 'function' ? updater(visibleLines) : updater });
+  };
+  const setActiveTab = (val: number) => updateState({ activeTab: val });
+
   const [showDropZones, setShowDropZones] = useState(false);
   const [dragHoverZone, setDragHoverZone] = useState<DropZone | null>(null);
   const [isCtrlPressed, setIsCtrlPressed] = useState(false);
@@ -188,12 +198,16 @@ export default function Terminal({ terminalId, onDragStart, onDrop }: TerminalPr
     );
   };
 
+  const isFinished = visibleLines >= terminalLines.length;
+
   const renderLine = (line: TerminalLine, index: number) => {
     const style = { animationDelay: `${(line.delay ?? index * 150) / 1000}s` };
+    const lineClass = `${styles.line} ${isFinished ? styles.noAnim : ""}`;
+    
     switch (line.type) {
       case "prompt":
         return (
-          <div key={index} className={styles.line} style={style}>
+          <div key={index} className={lineClass} style={style}>
             <span className={styles.prompt}>
               <span className={styles.outputAccent}>{line.user}</span><span className={styles.outputDim}>@</span><span className={styles.outputMauve}>{line.host}</span><span className={styles.outputDim}> </span><span className={styles.outputAccent}>{line.path}</span>
             </span>
@@ -202,9 +216,9 @@ export default function Terminal({ terminalId, onDragStart, onDrop }: TerminalPr
             {index === terminalLines.length - 1 && visibleLines >= terminalLines.length && !line.command && <span className={styles.cursor} />}
           </div>
         );
-      case "output": return <div key={index} className={styles.line} style={style}><div className={styles.output}>{line.content}</div></div>;
-      case "neofetch": return <div key={index} className={styles.line} style={style}>{renderNeofetch()}</div>;
-      case "blank": return <div key={index} className={styles.line} style={style}>&nbsp;</div>;
+      case "output": return <div key={index} className={lineClass} style={style}><div className={styles.output}>{line.content}</div></div>;
+      case "neofetch": return <div key={index} className={lineClass} style={style}>{renderNeofetch()}</div>;
+      case "blank": return <div key={index} className={lineClass} style={style}>&nbsp;</div>;
       default: return null;
     }
   };
@@ -246,7 +260,7 @@ export default function Terminal({ terminalId, onDragStart, onDrop }: TerminalPr
     <motion.div
       layout
       layoutId={terminalId}
-      initial={{ opacity: 0, scale: 0.85 }}
+      initial={isFinished ? false : { opacity: 0, scale: 0.85 }}
       animate={{ opacity: 1, scale: 1 }}
       transition={{ type: "spring", stiffness: 300, damping: 30 }}
       className={`${styles.windowTile} ${isActive ? styles.active : ""} relative w-full h-full ${isCtrlPressed ? 'cursor-grab active:cursor-grabbing' : ''}`}
@@ -257,6 +271,7 @@ export default function Terminal({ terminalId, onDragStart, onDrop }: TerminalPr
         e.stopPropagation();
         onDragStart(e, terminalId);
       }}
+      onDragEnd={onDragEnd}
       onDragOver={handleDragOver}
       onDrop={handleDrop}
     >
