@@ -1,7 +1,9 @@
 "use client";
 
 import React, { useState, useEffect, useRef } from "react";
+import { motion } from "framer-motion";
 import styles from "./Terminal.module.css";
+import type { DropZone } from "@/components/BSP/bspUtils";
 
 // Terminal icon for the title bar
 const TermIcon = () => (
@@ -51,64 +53,54 @@ interface TerminalLine {
   delay?: number;
 }
 
-export default function Terminal() {
+interface TerminalProps {
+  terminalId: string;
+  onDragStart: (e: React.DragEvent, id: string) => void;
+  onDrop: (targetId: string, zone: DropZone) => void;
+}
+
+export default function Terminal({ terminalId, onDragStart, onDrop }: TerminalProps) {
   const [isActive, setIsActive] = useState(true);
   const [visibleLines, setVisibleLines] = useState(0);
   const [activeTab, setActiveTab] = useState(0);
+  const [showDropZones, setShowDropZones] = useState(false);
+  const [dragHoverZone, setDragHoverZone] = useState<DropZone | null>(null);
+  const [isCtrlPressed, setIsCtrlPressed] = useState(false);
   const bodyRef = useRef<HTMLDivElement>(null);
 
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => { if (e.key === "Control") setIsCtrlPressed(true); };
+    const handleKeyUp = (e: KeyboardEvent) => { if (e.key === "Control") setIsCtrlPressed(false); };
+    const handleBlur = () => setIsCtrlPressed(false);
+
+    window.addEventListener("keydown", handleKeyDown);
+    window.addEventListener("keyup", handleKeyUp);
+    window.addEventListener("blur", handleBlur);
+
+    return () => {
+      window.removeEventListener("keydown", handleKeyDown);
+      window.removeEventListener("keyup", handleKeyUp);
+      window.removeEventListener("blur", handleBlur);
+    };
+  }, []);
+
   const terminalLines: TerminalLine[] = [
-    {
-      type: "prompt",
-      user: "joseph",
-      host: "arch",
-      path: "~",
-      command: "neofetch",
-      delay: 0,
-    },
-    {
-      type: "neofetch",
-      delay: 200,
-    },
-    {
-      type: "prompt",
-      user: "joseph",
-      host: "arch",
-      path: "~",
-      command: "cat about.txt",
-      delay: 400,
-    },
+    { type: "prompt", user: "joseph", host: "arch", path: "~", command: "neofetch", delay: 0 },
+    { type: "neofetch", delay: 200 },
+    { type: "prompt", user: "joseph", host: "arch", path: "~", command: "cat about.txt", delay: 400 },
     {
       type: "output",
       content: (
         <>
-          <span className={styles.outputHighlight}>
-            Hey! I&apos;m Joseph 👋
-          </span>
-          <br />
-          <span className={styles.output}>
-            A passionate developer who loves building
-          </span>
-          <br />
-          <span className={styles.output}>
-            beautiful, performant software. I run Arch btw.
-          </span>
+          <span className={styles.outputHighlight}>Hey! I&apos;m Joseph 👋</span><br />
+          <span className={styles.output}>A passionate developer who loves building</span><br />
+          <span className={styles.output}>beautiful, performant software. I run Arch btw.</span>
         </>
       ),
       delay: 600,
     },
-    {
-      type: "blank",
-      delay: 700,
-    },
-    {
-      type: "prompt",
-      user: "joseph",
-      host: "arch",
-      path: "~",
-      command: "ls ./skills/",
-      delay: 800,
-    },
+    { type: "blank", delay: 700 },
+    { type: "prompt", user: "joseph", host: "arch", path: "~", command: "ls ./skills/", delay: 800 },
     {
       type: "output",
       content: (
@@ -118,8 +110,7 @@ export default function Terminal() {
           <span className={styles.outputMauve}>Next.js </span>
           <span className={styles.outputHighlight}>Node.js </span>
           <span className={styles.outputRed}>Rust </span>
-          <span className={styles.outputAccent}>Python</span>
-          <br />
+          <span className={styles.outputAccent}>Python</span><br />
           <span className={styles.outputGreen}>Linux </span>
           <span className={styles.outputMauve}>Docker </span>
           <span className={styles.outputHighlight}>Git </span>
@@ -129,97 +120,41 @@ export default function Terminal() {
       ),
       delay: 1000,
     },
-    {
-      type: "blank",
-      delay: 1100,
-    },
-    {
-      type: "prompt",
-      user: "joseph",
-      host: "arch",
-      path: "~",
-      command: "cat contact.json",
-      delay: 1200,
-    },
+    { type: "blank", delay: 1100 },
+    { type: "prompt", user: "joseph", host: "arch", path: "~", command: "cat contact.json", delay: 1200 },
     {
       type: "output",
       content: (
         <>
-          <span className={styles.outputDim}>{"{"}</span>
-          <br />
-          <span className={styles.outputDim}> &quot;</span>
-          <span className={styles.outputAccent}>github</span>
-          <span className={styles.outputDim}>&quot;: &quot;</span>
-          <span className={styles.link}>github.com/joseph</span>
-          <span className={styles.outputDim}>&quot;,</span>
-          <br />
-          <span className={styles.outputDim}> &quot;</span>
-          <span className={styles.outputAccent}>email</span>
-          <span className={styles.outputDim}>&quot;: &quot;</span>
-          <span className={styles.link}>hello@joseph.dev</span>
-          <span className={styles.outputDim}>&quot;,</span>
-          <br />
-          <span className={styles.outputDim}> &quot;</span>
-          <span className={styles.outputAccent}>linkedin</span>
-          <span className={styles.outputDim}>&quot;: &quot;</span>
-          <span className={styles.link}>linkedin.com/in/joseph</span>
-          <span className={styles.outputDim}>&quot;</span>
-          <br />
+          <span className={styles.outputDim}>{"{"}</span><br />
+          <span className={styles.outputDim}> &quot;</span><span className={styles.outputAccent}>github</span><span className={styles.outputDim}>&quot;: &quot;</span><span className={styles.link}>github.com/joseph</span><span className={styles.outputDim}>&quot;,</span><br />
+          <span className={styles.outputDim}> &quot;</span><span className={styles.outputAccent}>email</span><span className={styles.outputDim}>&quot;: &quot;</span><span className={styles.link}>hello@joseph.dev</span><span className={styles.outputDim}>&quot;,</span><br />
+          <span className={styles.outputDim}> &quot;</span><span className={styles.outputAccent}>linkedin</span><span className={styles.outputDim}>&quot;: &quot;</span><span className={styles.link}>linkedin.com/in/joseph</span><span className={styles.outputDim}>&quot;</span><br />
           <span className={styles.outputDim}>{"}"}</span>
         </>
       ),
       delay: 1400,
     },
-    {
-      type: "blank",
-      delay: 1500,
-    },
-    {
-      type: "prompt",
-      user: "joseph",
-      host: "arch",
-      path: "~",
-      command: "",
-      delay: 1600,
-    },
+    { type: "blank", delay: 1500 },
+    { type: "prompt", user: "joseph", host: "arch", path: "~", command: "", delay: 1600 },
   ];
 
-  // Animate lines appearing one by one
   useEffect(() => {
     if (visibleLines >= terminalLines.length) return;
-
     const nextLine = terminalLines[visibleLines];
     const delay = nextLine?.delay ?? visibleLines * 150;
-    const prevDelay =
-      visibleLines > 0 ? (terminalLines[visibleLines - 1]?.delay ?? 0) : 0;
-    const relativeDelay = delay - prevDelay;
-
-    const timer = setTimeout(() => {
-      setVisibleLines((prev) => prev + 1);
-    }, relativeDelay);
-
+    const prevDelay = visibleLines > 0 ? (terminalLines[visibleLines - 1]?.delay ?? 0) : 0;
+    const timer = setTimeout(() => setVisibleLines((prev) => prev + 1), delay - prevDelay);
     return () => clearTimeout(timer);
   }, [visibleLines, terminalLines.length]);
 
-  // Auto-scroll to bottom as lines appear
   useEffect(() => {
-    if (bodyRef.current) {
-      bodyRef.current.scrollTop = bodyRef.current.scrollHeight;
-    }
+    if (bodyRef.current) bodyRef.current.scrollTop = bodyRef.current.scrollHeight;
   }, [visibleLines]);
 
   const renderNeofetch = () => {
     const infoLines = [
-      {
-        label: "",
-        value: (
-          <>
-            <span className={styles.outputAccent}>joseph</span>
-            <span className={styles.outputDim}>@</span>
-            <span className={styles.outputMauve}>arch</span>
-          </>
-        ),
-      },
+      { label: "", value: <><span className={styles.outputAccent}>joseph</span><span className={styles.outputDim}>@</span><span className={styles.outputMauve}>arch</span></> },
       { label: "", value: <span className={styles.separator}>──────────────</span> },
       { label: "OS", value: "Arch Linux x86_64" },
       { label: "Host", value: "Portfolio v2.0" },
@@ -239,53 +174,14 @@ export default function Terminal() {
         <div className={styles.neofetchInfo}>
           {infoLines.map((line, i) => (
             <div key={i}>
-              {line.label ? (
-                <>
-                  <span className={styles.infoLabel}>{line.label}</span>
-                  <span className={styles.outputDim}>: </span>
-                  <span className={styles.infoValue}>{line.value}</span>
-                </>
-              ) : (
-                line.value
-              )}
+              {line.label ? <><span className={styles.infoLabel}>{line.label}</span><span className={styles.outputDim}>: </span><span className={styles.infoValue}>{line.value}</span></> : line.value}
             </div>
           ))}
-          {/* Color blocks like real neofetch */}
           <div className={styles.colorBlocks}>
-            {[
-              "#45475a",
-              "#f38ba8",
-              "#a6e3a1",
-              "#f9e2af",
-              "#89b4fa",
-              "#cba6f7",
-              "#89dceb",
-              "#bac2de",
-            ].map((color, i) => (
-              <div
-                key={i}
-                className={styles.colorBlock}
-                style={{ background: color }}
-              />
-            ))}
+            {["#45475a", "#f38ba8", "#a6e3a1", "#f9e2af", "#89b4fa", "#cba6f7", "#89dceb", "#bac2de"].map((c, i) => <div key={i} className={styles.colorBlock} style={{ background: c }} />)}
           </div>
           <div className={styles.colorBlocks}>
-            {[
-              "#585b70",
-              "#f38ba8",
-              "#a6e3a1",
-              "#f9e2af",
-              "#89b4fa",
-              "#cba6f7",
-              "#94e2d5",
-              "#a6adc8",
-            ].map((color, i) => (
-              <div
-                key={i}
-                className={styles.colorBlock}
-                style={{ background: color }}
-              />
-            ))}
+            {["#585b70", "#f38ba8", "#a6e3a1", "#f9e2af", "#89b4fa", "#cba6f7", "#94e2d5", "#a6adc8"].map((c, i) => <div key={i} className={styles.colorBlock} style={{ background: c }} />)}
           </div>
         </div>
       </div>
@@ -293,62 +189,84 @@ export default function Terminal() {
   };
 
   const renderLine = (line: TerminalLine, index: number) => {
-    const style = {
-      animationDelay: `${(line.delay ?? index * 150) / 1000}s`,
-    };
-
+    const style = { animationDelay: `${(line.delay ?? index * 150) / 1000}s` };
     switch (line.type) {
       case "prompt":
         return (
           <div key={index} className={styles.line} style={style}>
             <span className={styles.prompt}>
-              <span className={styles.outputAccent}>{line.user}</span>
-              <span className={styles.outputDim}>@</span>
-              <span className={styles.outputMauve}>{line.host}</span>
-              <span className={styles.outputDim}> </span>
-              <span className={styles.outputAccent}>{line.path}</span>
+              <span className={styles.outputAccent}>{line.user}</span><span className={styles.outputDim}>@</span><span className={styles.outputMauve}>{line.host}</span><span className={styles.outputDim}> </span><span className={styles.outputAccent}>{line.path}</span>
             </span>
             <span className={styles.promptSymbol}> ❯ </span>
             <span className={styles.command}>{line.command}</span>
-            {/* Show cursor on the last prompt if it has no command */}
-            {index === terminalLines.length - 1 &&
-              visibleLines >= terminalLines.length &&
-              !line.command && <span className={styles.cursor} />}
+            {index === terminalLines.length - 1 && visibleLines >= terminalLines.length && !line.command && <span className={styles.cursor} />}
           </div>
         );
-
-      case "output":
-        return (
-          <div key={index} className={styles.line} style={style}>
-            <div className={styles.output}>{line.content}</div>
-          </div>
-        );
-
-      case "neofetch":
-        return (
-          <div key={index} className={styles.line} style={style}>
-            {renderNeofetch()}
-          </div>
-        );
-
-      case "blank":
-        return <div key={index} className={styles.line} style={style}>&nbsp;</div>;
-
-      default:
-        return null;
+      case "output": return <div key={index} className={styles.line} style={style}><div className={styles.output}>{line.content}</div></div>;
+      case "neofetch": return <div key={index} className={styles.line} style={style}>{renderNeofetch()}</div>;
+      case "blank": return <div key={index} className={styles.line} style={style}>&nbsp;</div>;
+      default: return null;
     }
   };
 
-  const tabs = ["terminal", "projects", "blog"];
+  const handleDragOver = (e: React.DragEvent) => {
+    e.preventDefault(); // allow drop
+  };
+
+  const handleDrop = (e: React.DragEvent) => {
+    e.preventDefault();
+    const rect = e.currentTarget.getBoundingClientRect();
+    const x = e.clientX - rect.left;
+    const y = e.clientY - rect.top;
+    
+    let zone: DropZone;
+    
+    // Intelligently split based on aspect ratio
+    if (rect.width > rect.height * 1.2) {
+      // Window is wide -> force vertical split (side by side)
+      zone = (x > rect.width / 2) ? "right" : "left";
+    } else if (rect.height > rect.width * 1.2) {
+      // Window is tall -> force horizontal split (stacked)
+      zone = (y > rect.height / 2) ? "bottom" : "top";
+    } else {
+      // Roughly square -> use diagonal quadrants
+      const nx = (x / rect.width) * 2 - 1;
+      const ny = (y / rect.height) * 2 - 1;
+      if (Math.abs(nx) > Math.abs(ny)) {
+        zone = nx > 0 ? "right" : "left";
+      } else {
+        zone = ny > 0 ? "bottom" : "top";
+      }
+    }
+    
+    onDrop(terminalId, zone);
+  };
 
   return (
-    <div
-      className={`${styles.windowTile} ${isActive ? styles.active : ""}`}
+    <motion.div
+      layout
+      layoutId={terminalId}
+      initial={{ opacity: 0, scale: 0.85 }}
+      animate={{ opacity: 1, scale: 1 }}
+      transition={{ type: "spring", stiffness: 300, damping: 30 }}
+      className={`${styles.windowTile} ${isActive ? styles.active : ""} relative w-full h-full ${isCtrlPressed ? 'cursor-grab active:cursor-grabbing' : ''}`}
       onClick={() => setIsActive(true)}
       onMouseDown={() => setIsActive(true)}
+      draggable={isCtrlPressed}
+      onDragStart={(e) => {
+        e.stopPropagation();
+        onDragStart(e, terminalId);
+      }}
+      onDragOver={handleDragOver}
+      onDrop={handleDrop}
     >
+
       {/* Title Bar */}
-      <div className={styles.titleBar}>
+      <div 
+        className={`${styles.titleBar} cursor-grab active:cursor-grabbing`}
+        draggable
+        onDragStart={(e) => onDragStart(e, terminalId)}
+      >
         <div className={styles.titleBarLeft}>
           <div className={styles.windowControls}>
             <div className={`${styles.windowDot} ${styles.dotClose}`} />
@@ -356,22 +274,13 @@ export default function Terminal() {
             <div className={`${styles.windowDot} ${styles.dotMaximize}`} />
           </div>
           <div className={styles.titleText}>
-            <span className={styles.titleIcon}>
-              <TermIcon />
-            </span>
+            <span className={styles.titleIcon}><TermIcon /></span>
             <span>joseph@arch: ~</span>
           </div>
         </div>
         <div className={styles.titleBarRight}>
-          {tabs.map((tab, i) => (
-            <div
-              key={tab}
-              className={`${styles.tabPill} ${i === activeTab ? styles.activeTab : ""}`}
-              onClick={(e) => {
-                e.stopPropagation();
-                setActiveTab(i);
-              }}
-            >
+          {["terminal", "projects", "blog"].map((tab, i) => (
+            <div key={tab} className={`${styles.tabPill} ${i === activeTab ? styles.activeTab : ""}`} onClick={(e) => { e.stopPropagation(); setActiveTab(i); }}>
               {tab}
             </div>
           ))}
@@ -397,6 +306,6 @@ export default function Terminal() {
           <span>ln {visibleLines}, col 1</span>
         </div>
       </div>
-    </div>
+    </motion.div>
   );
 }
