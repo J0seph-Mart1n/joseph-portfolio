@@ -1,4 +1,5 @@
 import Waybar from "@/components/Waybar/Waybar";
+import Terminal from "@/components/Terminal/Terminal";
 
 export default function Home() {
   return (
@@ -12,9 +13,12 @@ export default function Home() {
       {/* Waybar */}
       <Waybar />
 
-      {/* Desktop Space (Hyprland tiling will go here later) */}
-      <main className="relative z-10 w-full h-full pt-16 p-4">
-        {/* Placeholder for future windows */}
+      {/* Desktop Space — Hyprland tiling layout with gaps */}
+      <main className="relative z-10 w-full h-[calc(100vh-60px)] mt-[52px] p-[8px] flex gap-[8px]">
+        {/* Main terminal window tile */}
+        <div className="flex-1 min-w-0">
+          <Terminal />
+        </div>
       </main>
     </div>
   );

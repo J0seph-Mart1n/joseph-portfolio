@@ -1,0 +1,362 @@
+/* ============================================
+   Hyprland-Style Window Tile — Terminal
+   ============================================ */
+
+.windowTile {
+  position: relative;
+  border-radius: 14px;
+  background: rgba(30, 30, 46, 0.85);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  border: 1px solid rgba(137, 180, 250, 0.15);
+  box-shadow:
+    0 0 0 1px rgba(0, 0, 0, 0.3),
+    0 8px 32px rgba(0, 0, 0, 0.5),
+    0 2px 8px rgba(0, 0, 0, 0.3),
+    inset 0 1px 0 rgba(255, 255, 255, 0.04);
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+  width: 100%;
+  height: 100%;
+  transition: box-shadow 0.3s ease, border-color 0.3s ease;
+}
+
+/* Active border glow — mimics Hyprland's active window border */
+.windowTile.active {
+  border-color: rgba(137, 180, 250, 0.4);
+  box-shadow:
+    0 0 0 1px rgba(137, 180, 250, 0.15),
+    0 12px 40px rgba(0, 0, 0, 0.55),
+    0 2px 8px rgba(0, 0, 0, 0.3),
+    0 0 30px rgba(137, 180, 250, 0.08),
+    inset 0 1px 0 rgba(255, 255, 255, 0.05);
+}
+
+.windowTile:hover,
+.windowTile.active:hover {
+  border-color: rgba(137, 180, 250, 1);
+  box-shadow:
+    0 0 0 1px rgba(137, 180, 250, 1),
+    0 12px 40px rgba(0, 0, 0, 0.55),
+    0 2px 8px rgba(0, 0, 0, 0.3),
+    0 0 40px rgba(137, 180, 250, 0.6),
+    0 0 80px rgba(137, 180, 250, 0.4),
+    inset 0 1px 0 rgba(255, 255, 255, 0.05);
+}
+
+/* ---- Title Bar ---- */
+.titleBar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 10px 16px;
+  background: rgba(24, 24, 37, 0.9);
+  border-bottom: 1px solid rgba(255, 255, 255, 0.04);
+  user-select: none;
+  flex-shrink: 0;
+}
+
+.titleBarLeft {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.windowControls {
+  display: flex;
+  gap: 8px;
+}
+
+.windowDot {
+  width: 12px;
+  height: 12px;
+  border-radius: 50%;
+  transition: opacity 0.2s ease, transform 0.15s ease;
+  cursor: pointer;
+}
+
+.windowDot:hover {
+  opacity: 0.85;
+  transform: scale(1.15);
+}
+
+.dotClose {
+  background: #f38ba8;
+  box-shadow: 0 0 6px rgba(243, 139, 168, 0.35);
+}
+
+.dotMinimize {
+  background: #f9e2af;
+  box-shadow: 0 0 6px rgba(249, 226, 175, 0.35);
+}
+
+.dotMaximize {
+  background: #a6e3a1;
+  box-shadow: 0 0 6px rgba(166, 227, 161, 0.35);
+}
+
+.titleText {
+  font-family: ui-monospace, SFMono-Regular, "SF Mono", Menlo, Consolas, "Liberation Mono", monospace;
+  font-size: 12px;
+  color: #a6adc8;
+  letter-spacing: 0.02em;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.titleIcon {
+  color: #cba6f7;
+  display: flex;
+  align-items: center;
+}
+
+.titleBarRight {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.tabPill {
+  font-family: ui-monospace, SFMono-Regular, "SF Mono", Menlo, Consolas, "Liberation Mono", monospace;
+  font-size: 11px;
+  padding: 2px 10px;
+  border-radius: 6px;
+  background: rgba(49, 50, 68, 0.7);
+  color: #6c7086;
+  border: 1px solid rgba(255, 255, 255, 0.03);
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.tabPill:hover {
+  background: rgba(69, 71, 90, 0.8);
+  color: #a6adc8;
+}
+
+.tabPill.activeTab {
+  background: rgba(137, 180, 250, 0.12);
+  color: #89b4fa;
+  border-color: rgba(137, 180, 250, 0.2);
+}
+
+/* ---- Terminal Body ---- */
+.terminalBody {
+  flex: 1;
+  padding: 16px 20px;
+  overflow-y: auto;
+  font-family: ui-monospace, SFMono-Regular, "SF Mono", Menlo, Consolas, "Liberation Mono", monospace;
+  font-size: 13.5px;
+  line-height: 1.7;
+  color: #cdd6f4;
+  scrollbar-width: thin;
+  scrollbar-color: rgba(69, 71, 90, 0.6) transparent;
+}
+
+.terminalBody::-webkit-scrollbar {
+  width: 6px;
+}
+
+.terminalBody::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.terminalBody::-webkit-scrollbar-thumb {
+  background: rgba(69, 71, 90, 0.6);
+  border-radius: 3px;
+}
+
+/* ---- Terminal Lines ---- */
+.line {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0;
+  margin-bottom: 2px;
+  animation: fadeInLine 0.3s ease forwards;
+  opacity: 0;
+}
+
+@keyframes fadeInLine {
+  from {
+    opacity: 0;
+    transform: translateY(4px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.prompt {
+  color: #89b4fa;
+  font-weight: 600;
+  white-space: pre;
+}
+
+.promptSymbol {
+  color: #a6e3a1;
+  font-weight: 700;
+}
+
+.command {
+  color: #cdd6f4;
+  font-weight: 500;
+}
+
+.output {
+  color: #a6adc8;
+  padding-left: 0;
+  display: block;
+  width: 100%;
+}
+
+.outputHighlight {
+  color: #f9e2af;
+}
+
+.outputAccent {
+  color: #89b4fa;
+}
+
+.outputGreen {
+  color: #a6e3a1;
+}
+
+.outputMauve {
+  color: #cba6f7;
+}
+
+.outputRed {
+  color: #f38ba8;
+}
+
+.outputDim {
+  color: #585b70;
+}
+
+.link {
+  color: #89dceb;
+  text-decoration: underline;
+  text-decoration-color: rgba(137, 220, 235, 0.3);
+  text-underline-offset: 2px;
+  cursor: pointer;
+  transition: text-decoration-color 0.2s ease;
+}
+
+.link:hover {
+  text-decoration-color: rgba(137, 220, 235, 0.7);
+}
+
+/* ---- Cursor blink ---- */
+.cursor {
+  display: inline-block;
+  width: 8px;
+  height: 17px;
+  background: #89b4fa;
+  margin-left: 2px;
+  vertical-align: text-bottom;
+  animation: blink 1s step-end infinite;
+  border-radius: 1px;
+}
+
+@keyframes blink {
+  0%, 100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0;
+  }
+}
+
+/* ---- ASCII Art ---- */
+.ascii {
+  color: #89b4fa;
+  font-size: 11px;
+  line-height: 1.25;
+  white-space: pre;
+  display: block;
+  margin-bottom: 4px;
+}
+
+/* ---- Neofetch Layout ---- */
+.neofetchContainer {
+  display: flex;
+  gap: 24px;
+  margin-bottom: 8px;
+  align-items: flex-start;
+}
+
+.neofetchInfo {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  font-size: 13px;
+  line-height: 1.6;
+}
+
+.infoLabel {
+  color: #89b4fa;
+  font-weight: 600;
+}
+
+.infoValue {
+  color: #cdd6f4;
+}
+
+.separator {
+  color: #585b70;
+  margin: 4px 0;
+}
+
+.colorBlocks {
+  display: flex;
+  gap: 0;
+  margin-top: 6px;
+}
+
+.colorBlock {
+  width: 24px;
+  height: 12px;
+}
+
+/* ---- Status Bar at bottom ---- */
+.statusBar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 6px 16px;
+  background: rgba(24, 24, 37, 0.7);
+  border-top: 1px solid rgba(255, 255, 255, 0.04);
+  font-family: ui-monospace, SFMono-Regular, "SF Mono", Menlo, Consolas, "Liberation Mono", monospace;
+  font-size: 11px;
+  color: #585b70;
+  flex-shrink: 0;
+  user-select: none;
+}
+
+.statusLeft {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.statusRight {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.statusItem {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.statusDot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: #a6e3a1;
+  box-shadow: 0 0 4px rgba(166, 227, 161, 0.4);
+}
