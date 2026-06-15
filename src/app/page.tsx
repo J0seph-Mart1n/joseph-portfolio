@@ -5,7 +5,8 @@ import Waybar from "@/components/Waybar/Waybar";
 import Terminal from "@/components/Terminal/Terminal";
 
 export default function Home() {
-  const [splitRatio, setSplitRatio] = useState(50); // percentage
+  const [splitRatio, setSplitRatio] = useState(50); // horizontal percentage
+  const [vSplitRatio, setVSplitRatio] = useState(50); // vertical percentage
   const [isResizing, setIsResizing] = useState(false);
   const [isCtrlPressed, setIsCtrlPressed] = useState(false);
   const containerRef = useRef<HTMLElement>(null);
@@ -41,14 +42,20 @@ export default function Home() {
       const container = containerRef.current;
       const rect = container.getBoundingClientRect();
       const x = e.clientX - rect.left;
+      const y = e.clientY - rect.top;
       
-      let newRatio = (x / rect.width) * 100;
+      let newRatioX = (x / rect.width) * 100;
+      let newRatioY = (y / rect.height) * 100;
       
       // Clamp between 15% and 85% to maintain usable window sizes
-      if (newRatio < 15) newRatio = 15;
-      if (newRatio > 85) newRatio = 85;
+      if (newRatioX < 15) newRatioX = 15;
+      if (newRatioX > 85) newRatioX = 85;
       
-      setSplitRatio(newRatio);
+      if (newRatioY < 15) newRatioY = 15;
+      if (newRatioY > 85) newRatioY = 85;
+      
+      setSplitRatio(newRatioX);
+      setVSplitRatio(newRatioY);
     };
 
     const handleMouseUp = () => {
@@ -67,9 +74,17 @@ export default function Home() {
   }, [isResizing]);
 
   const handleMouseDown = (e: React.MouseEvent) => {
-    if (e.ctrlKey) {
+    // Only trigger on Right Click (button === 2) while Ctrl is pressed
+    if (e.ctrlKey && e.button === 2) {
       e.preventDefault();
       setIsResizing(true);
+    }
+  };
+
+  const handleContextMenu = (e: React.MouseEvent) => {
+    // Prevent default context menu from popping up when Ctrl+Right Click is used
+    if (e.ctrlKey) {
+      e.preventDefault();
     }
   };
 
@@ -88,7 +103,8 @@ export default function Home() {
       <main 
         ref={containerRef}
         onMouseDown={handleMouseDown}
-        className={`relative z-10 w-full h-[calc(100vh-60px)] mt-[52px] p-[8px] flex gap-[8px] ${(isResizing || isCtrlPressed) ? 'cursor-col-resize select-none' : ''}`}
+        onContextMenu={handleContextMenu}
+        className={`relative z-10 w-full h-[calc(100vh-60px)] mt-[52px] p-[8px] flex gap-[8px] ${(isResizing || isCtrlPressed) ? 'cursor-crosshair select-none' : ''}`}
       >
         {/* First window tile */}
         <div 
@@ -97,12 +113,23 @@ export default function Home() {
         >
           <Terminal />
         </div>
-        {/* Second window tile for 50-50 proportion */}
+        {/* Second column containing two terminal windows vertically */}
         <div 
-          className="min-w-0 transition-all duration-75 ease-out"
+          className="min-w-0 flex flex-col gap-[8px] transition-all duration-75 ease-out"
           style={{ flex: `${100 - splitRatio} 1 0%` }}
         >
-          <Terminal />
+          <div 
+            className="min-h-0 transition-all duration-75 ease-out"
+            style={{ flex: `${vSplitRatio} 1 0%` }}
+          >
+            <Terminal />
+          </div>
+          <div 
+            className="min-h-0 transition-all duration-75 ease-out"
+            style={{ flex: `${100 - vSplitRatio} 1 0%` }}
+          >
+            <Terminal />
+          </div>
         </div>
       </main>
     </div>
