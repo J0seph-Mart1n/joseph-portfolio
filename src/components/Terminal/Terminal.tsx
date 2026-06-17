@@ -62,9 +62,10 @@ interface TerminalProps {
   onDragEnd?: () => void;
   state: TerminalState;
   updateState: (updates: Partial<TerminalState>) => void;
+  isGhost?: boolean;
 }
 
-export default function Terminal({ terminalId, onDragStart, onDrop, onDragEnd, state, updateState }: TerminalProps) {
+export default function Terminal({ terminalId, onDragStart, onDrop, onDragEnd, state, updateState, isGhost }: TerminalProps) {
   const { isActive, visibleLines, activeTab } = state || { isActive: true, visibleLines: 0, activeTab: 0 };
   
   const setIsActive = (val: boolean) => updateState({ isActive: val });
@@ -235,34 +236,18 @@ export default function Terminal({ terminalId, onDragStart, onDrop, onDragEnd, s
     
     let zone: DropZone;
     
-    // Intelligently split based on aspect ratio
-    if (rect.width > rect.height * 1.2) {
-      // Window is wide -> force vertical split (side by side)
+    // Split the window by its long edge
+    if (rect.width >= rect.height) {
       zone = (x > rect.width / 2) ? "right" : "left";
-    } else if (rect.height > rect.width * 1.2) {
-      // Window is tall -> force horizontal split (stacked)
-      zone = (y > rect.height / 2) ? "bottom" : "top";
     } else {
-      // Roughly square -> use diagonal quadrants
-      const nx = (x / rect.width) * 2 - 1;
-      const ny = (y / rect.height) * 2 - 1;
-      if (Math.abs(nx) > Math.abs(ny)) {
-        zone = nx > 0 ? "right" : "left";
-      } else {
-        zone = ny > 0 ? "bottom" : "top";
-      }
+      zone = (y > rect.height / 2) ? "bottom" : "top";
     }
     
     onDrop(terminalId, zone);
   };
 
   return (
-    <motion.div
-      layout
-      layoutId={terminalId}
-      initial={isFinished ? false : { opacity: 0, scale: 0.85 }}
-      animate={{ opacity: 1, scale: 1 }}
-      transition={{ type: "spring", stiffness: 300, damping: 30 }}
+    <div
       className={`${styles.windowTile} ${isActive ? styles.active : ""} relative w-full h-full ${isCtrlPressed ? 'cursor-grab active:cursor-grabbing' : ''}`}
       onClick={() => setIsActive(true)}
       onMouseDown={() => setIsActive(true)}
@@ -321,6 +306,6 @@ export default function Terminal({ terminalId, onDragStart, onDrop, onDragEnd, s
           <span>ln {visibleLines}, col 1</span>
         </div>
       </div>
-    </motion.div>
+    </div>
   );
 }

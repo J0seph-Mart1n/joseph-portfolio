@@ -45,6 +45,9 @@ export default function Home() {
   });
 
   const [draggedTerminalId, setDraggedTerminalId] = useState<string | null>(null);
+  const [ghostConfig, setGhostConfig] = useState<{w: number, h: number, x: number, y: number} | null>(null);
+  const ghostPosRef = useRef({ x: 0, y: 0 });
+  const ghostRef = useRef<HTMLDivElement>(null);
 
   const updateTerminalState = (id: string, updates: Partial<TerminalState>) => {
     setTerminalStates(prev => ({
@@ -94,17 +97,49 @@ export default function Home() {
         return splitNode(newLayout, targetId, droppedId, zone) || newLayout;
       });
       setDraggedTerminalId(null);
+      setGhostConfig(null);
     };
     window.addEventListener('bsp-drop', onBspDrop);
-    return () => window.removeEventListener('bsp-drop', onBspDrop);
+    
+    const handleGlobalDragOver = (e: DragEvent) => {
+      if (ghostRef.current) {
+        const x = e.clientX - ghostPosRef.current.x;
+        const y = e.clientY - ghostPosRef.current.y;
+        ghostRef.current.style.transform = `translate3d(${x}px, ${y}px, 0)`;
+      }
+    };
+    window.addEventListener("dragover", handleGlobalDragOver);
+    
+    return () => {
+      window.removeEventListener('bsp-drop', onBspDrop);
+      window.removeEventListener("dragover", handleGlobalDragOver);
+    };
   }, []);
 
   const handleDragStart = (e: React.DragEvent, terminalId: string) => {
+    const img = new Image();
+    img.src = 'data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7';
+    e.dataTransfer.setDragImage(img, 0, 0);
+
     e.dataTransfer.setData("text/plain", terminalId);
     e.dataTransfer.effectAllowed = "move";
     draggedTerminalIdLocal = terminalId;
+
+    const target = e.currentTarget as HTMLElement;
+    const rect = target.getBoundingClientRect();
+
+    ghostPosRef.current = {
+      x: e.clientX - rect.left,
+      y: e.clientY - rect.top
+    };
+
+    setGhostConfig({
+      w: rect.width,
+      h: rect.height,
+      x: rect.left,
+      y: rect.top
+    });
     
-    // Defer state update so browser drag ghost captures the visible element first
     setTimeout(() => {
       setDraggedTerminalId(terminalId);
     }, 0);
@@ -113,6 +148,7 @@ export default function Home() {
   const handleDragEnd = () => {
     draggedTerminalIdLocal = null;
     setDraggedTerminalId(null);
+    setGhostConfig(null);
   };
 
   // Resize Dragging
@@ -192,6 +228,30 @@ export default function Home() {
             }
           }}
         />
+        {draggedTerminalId && ghostConfig && (
+          <div
+            ref={ghostRef}
+            style={{
+              position: 'fixed',
+              top: 0,
+              left: 0,
+              width: ghostConfig.w,
+              height: ghostConfig.h,
+              pointerEvents: 'none',
+              zIndex: 9999,
+              transform: `translate3d(${ghostConfig.x}px, ${ghostConfig.y}px, 0)`
+            }}
+          >
+            <Terminal 
+              terminalId={draggedTerminalId} 
+              state={terminalStates[draggedTerminalId]} 
+              updateState={updateTerminalState} 
+              onDragStart={() => {}} 
+              onDrop={() => {}} 
+              isGhost={true} 
+            />
+          </div>
+        )}
       </main>
     </div>
   );
@@ -219,9 +279,11 @@ const LayoutRenderer = ({
   draggedTerminalId: string | null;
 }) => {
   if (node.type === "leaf") {
+    const isDragged = node.terminalId === draggedTerminalId;
     return (
       <div 
-        className="w-full h-full relative"
+        className={`w-full h-full relative transition-opacity duration-300`}
+        style={isDragged ? { opacity: 0, pointerEvents: 'none' } : { opacity: 1 }}
         onMouseDown={(e) => onResizeStart(e, node.terminalId)}
       >
         <Terminal 
@@ -242,18 +304,29 @@ const LayoutRenderer = ({
 
   const isFirstDragged = node.first.type === "leaf" && node.first.terminalId === draggedTerminalId;
   const isSecondDragged = node.second.type === "leaf" && node.second.terminalId === draggedTerminalId;
+  const gapClass = (isFirstDragged || isSecondDragged) ? "gap-0" : "gap-[8px]";
 
   return (
-    <div className={`w-full h-full flex ${node.direction === "horizontal" ? "flex-row" : "flex-col"} gap-[8px]`}>
+    <div className={`w-full h-full flex ${node.direction === "horizontal" ? "flex-row" : "flex-col"} ${gapClass} transition-all duration-300 ease-out`}>
       <div 
         className="transition-all duration-300 ease-out min-w-0 min-h-0" 
-        style={isFirstDragged ? { position: 'absolute', opacity: 0, pointerEvents: 'none', zIndex: -1 } : { flex: `${node.ratio} 1 0%` }}
+        style={{ 
+          flex: isFirstDragged ? `0.00001 1 0%` : `${node.ratio} 1 0%`,
+          opacity: isFirstDragged ? 0 : 1,
+          pointerEvents: isFirstDragged ? 'none' : 'auto',
+          overflow: 'hidden'
+        }}
       >
         <LayoutRenderer node={node.first} terminalStates={terminalStates} updateTerminalState={updateTerminalState} onDragStart={onDragStart} onDrop={onDrop} onDragEnd={onDragEnd} onResizeStart={onResizeStart} draggedTerminalId={draggedTerminalId} />
       </div>
       <div 
         className="transition-all duration-300 ease-out min-w-0 min-h-0" 
-        style={isSecondDragged ? { position: 'absolute', opacity: 0, pointerEvents: 'none', zIndex: -1 } : { flex: `${100 - node.ratio} 1 0%` }}
+        style={{ 
+          flex: isSecondDragged ? `0.00001 1 0%` : `${100 - node.ratio} 1 0%`,
+          opacity: isSecondDragged ? 0 : 1,
+          pointerEvents: isSecondDragged ? 'none' : 'auto',
+          overflow: 'hidden'
+        }}
       >
         <LayoutRenderer node={node.second} terminalStates={terminalStates} updateTerminalState={updateTerminalState} onDragStart={onDragStart} onDrop={onDrop} onDragEnd={onDragEnd} onResizeStart={onResizeStart} draggedTerminalId={draggedTerminalId} />
       </div>
