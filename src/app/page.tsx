@@ -1,195 +1,26 @@
 "use client";
 
-import React, { useState, useRef, useEffect } from "react";
+import React, { useRef } from "react";
 import Waybar from "@/components/Waybar/Waybar";
-import Terminal from "@/components/Terminal/Terminal";
-import { 
-  LayoutNode, 
-  removeNode, 
-  splitNode, 
-  DropZone, 
-  getParentSplits, 
-  getSplitRatio, 
-  updateSplitRatio 
-} from "@/components/BSP/bspUtils";
-
-const initialLayout: LayoutNode = {
-  id: "root-split",
-  type: "split",
-  direction: "horizontal",
-  ratio: 50,
-  first: { id: "leaf-1", type: "leaf", terminalId: "term-1" },
-  second: {
-    id: "split-2",
-    type: "split",
-    direction: "vertical",
-    ratio: 50,
-    first: { id: "leaf-2", type: "leaf", terminalId: "term-2" },
-    second: { id: "leaf-3", type: "leaf", terminalId: "term-3" },
-  }
-};
-
-export type TerminalState = {
-  visibleLines: number;
-  activeTab: number;
-  isActive: boolean;
-};
+import LayoutRenderer from "@/components/BSP/LayoutRenderer";
+import { useWindowManager } from "@/hooks/useWindowManager";
 
 export default function Home() {
-  const [layout, setLayout] = useState<LayoutNode>(initialLayout);
-  
-  const [terminalStates, setTerminalStates] = useState<Record<string, TerminalState>>({
-    "term-1": { visibleLines: 0, activeTab: 0, isActive: true },
-    "term-2": { visibleLines: 0, activeTab: 0, isActive: true },
-    "term-3": { visibleLines: 0, activeTab: 0, isActive: true },
-  });
-
-  const [draggedTerminalId, setDraggedTerminalId] = useState<string | null>(null);
-  const [ghostConfig, setGhostConfig] = useState<{w: number, h: number, x: number, y: number} | null>(null);
-  const ghostPosRef = useRef({ x: 0, y: 0 });
-  const ghostRef = useRef<HTMLDivElement>(null);
-
-  const updateTerminalState = (id: string, updates: Partial<TerminalState>) => {
-    setTerminalStates(prev => ({
-      ...prev,
-      [id]: { ...prev[id], ...updates }
-    }));
-  };
-
-  // Resizing state
-  const [resizingState, setResizingState] = useState<{
-    hSplitId?: string;
-    vSplitId?: string;
-    startX: number;
-    startY: number;
-    startHRatio: number | null;
-    startVRatio: number | null;
-  } | null>(null);
-  
-  const [isCtrlPressed, setIsCtrlPressed] = useState(false);
   const containerRef = useRef<HTMLElement>(null);
-
-  // Keyboard monitors
-  useEffect(() => {
-    const handleKeyDown = (e: KeyboardEvent) => { if (e.key === "Control") setIsCtrlPressed(true); };
-    const handleKeyUp = (e: KeyboardEvent) => { if (e.key === "Control") setIsCtrlPressed(false); };
-    const handleBlur = () => setIsCtrlPressed(false);
-
-    window.addEventListener("keydown", handleKeyDown);
-    window.addEventListener("keyup", handleKeyUp);
-    window.addEventListener("blur", handleBlur);
-
-    return () => {
-      window.removeEventListener("keydown", handleKeyDown);
-      window.removeEventListener("keyup", handleKeyUp);
-      window.removeEventListener("blur", handleBlur);
-    };
-  }, []);
-
-  // Handle Drag & Drop to split/rearrange tiles
-  useEffect(() => {
-    const onBspDrop = (e: Event) => {
-      const { targetId, zone, droppedId } = (e as CustomEvent).detail;
-      
-      setLayout((prev) => {
-        let newLayout = removeNode(prev, droppedId);
-        if (!newLayout) return prev;
-        return splitNode(newLayout, targetId, droppedId, zone) || newLayout;
-      });
-      setDraggedTerminalId(null);
-      setGhostConfig(null);
-    };
-    window.addEventListener('bsp-drop', onBspDrop);
-    
-    const handleGlobalDragOver = (e: DragEvent) => {
-      if (ghostRef.current) {
-        const x = e.clientX - ghostPosRef.current.x;
-        const y = e.clientY - ghostPosRef.current.y;
-        ghostRef.current.style.transform = `translate3d(${x}px, ${y}px, 0)`;
-      }
-    };
-    window.addEventListener("dragover", handleGlobalDragOver);
-    
-    return () => {
-      window.removeEventListener('bsp-drop', onBspDrop);
-      window.removeEventListener("dragover", handleGlobalDragOver);
-    };
-  }, []);
-
-  const handleDragStart = (e: React.DragEvent, terminalId: string) => {
-    const img = new Image();
-    img.src = 'data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7';
-    e.dataTransfer.setDragImage(img, 0, 0);
-
-    e.dataTransfer.setData("text/plain", terminalId);
-    e.dataTransfer.effectAllowed = "move";
-    draggedTerminalIdLocal = terminalId;
-
-    const target = e.currentTarget as HTMLElement;
-    const rect = target.getBoundingClientRect();
-
-    ghostPosRef.current = {
-      x: e.clientX - rect.left,
-      y: e.clientY - rect.top
-    };
-
-    setGhostConfig({
-      w: rect.width,
-      h: rect.height,
-      x: rect.left,
-      y: rect.top
-    });
-    
-    setTimeout(() => {
-      setDraggedTerminalId(terminalId);
-    }, 0);
-  };
-
-  const handleDragEnd = () => {
-    draggedTerminalIdLocal = null;
-    setDraggedTerminalId(null);
-    setGhostConfig(null);
-  };
-
-  // Resize Dragging
-  useEffect(() => {
-    const handleMouseMove = (e: MouseEvent) => {
-      if (!resizingState || !containerRef.current) return;
-
-      const rect = containerRef.current.getBoundingClientRect();
-      const dx = e.clientX - resizingState.startX;
-      const dy = e.clientY - resizingState.startY;
-
-      let newLayout = layout;
-
-      if (resizingState.hSplitId && resizingState.startHRatio !== null) {
-        let newHRatio = resizingState.startHRatio + (dx / rect.width) * 100;
-        if (newHRatio < 15) newHRatio = 15;
-        if (newHRatio > 85) newHRatio = 85;
-        newLayout = updateSplitRatio(newLayout, resizingState.hSplitId, newHRatio);
-      }
-
-      if (resizingState.vSplitId && resizingState.startVRatio !== null) {
-        let newVRatio = resizingState.startVRatio + (dy / rect.height) * 100;
-        if (newVRatio < 15) newVRatio = 15;
-        if (newVRatio > 85) newVRatio = 85;
-        newLayout = updateSplitRatio(newLayout, resizingState.vSplitId, newVRatio);
-      }
-
-      setLayout(newLayout);
-    };
-
-    const handleMouseUp = () => setResizingState(null);
-
-    if (resizingState) {
-      window.addEventListener("mousemove", handleMouseMove);
-      window.addEventListener("mouseup", handleMouseUp);
-    }
-    return () => {
-      window.removeEventListener("mousemove", handleMouseMove);
-      window.removeEventListener("mouseup", handleMouseUp);
-    };
-  }, [resizingState, layout]);
+  
+  const {
+    layout,
+    terminalStates,
+    updateTerminalState,
+    draggedTerminalId,
+    ghostConfig,
+    ghostRef,
+    handleDragStart,
+    handleDragEnd,
+    handleResizeStart,
+    resizingState,
+    isCtrlPressed
+  } = useWindowManager(containerRef);
 
   return (
     <div className="relative w-full h-screen bg-[#1e1e2e] overflow-hidden font-sans">
@@ -204,30 +35,22 @@ export default function Home() {
         onContextMenu={(e) => { if (e.ctrlKey) e.preventDefault(); }}
         className={`relative z-10 w-full h-[calc(100vh-60px)] mt-[52px] p-[8px] ${(resizingState || isCtrlPressed) ? 'cursor-crosshair select-none' : ''}`}
       >
-        <LayoutRenderer 
-          node={layout} 
-          terminalStates={terminalStates}
-          updateTerminalState={updateTerminalState}
-          onDragStart={handleDragStart}
-          onDragEnd={handleDragEnd}
-          onDrop={(targetId, zone) => {}}
-          draggedTerminalId={draggedTerminalId}
-          onResizeStart={(e, terminalId) => {
-            if (e.ctrlKey && e.button === 2) {
-              e.preventDefault();
-              e.stopPropagation();
-              const splits = getParentSplits(layout, terminalId);
-              setResizingState({
-                hSplitId: splits.hSplitId,
-                vSplitId: splits.vSplitId,
-                startX: e.clientX,
-                startY: e.clientY,
-                startHRatio: splits.hSplitId ? getSplitRatio(layout, splits.hSplitId) : null,
-                startVRatio: splits.vSplitId ? getSplitRatio(layout, splits.vSplitId) : null,
-              });
-            }
-          }}
-        />
+        {layout ? (
+          <LayoutRenderer 
+            node={layout} 
+            terminalStates={terminalStates}
+            updateTerminalState={updateTerminalState}
+            onDragStart={handleDragStart}
+            onDragEnd={handleDragEnd}
+            onDrop={() => {}}
+            draggedTerminalId={draggedTerminalId}
+            onResizeStart={handleResizeStart}
+          />
+        ) : (
+          <div className="w-full h-full flex items-center justify-center text-[#6c7086] text-lg font-mono">
+            Press Shift + T to open a new window
+          </div>
+        )}
         {draggedTerminalId && ghostConfig && (
           <div
             ref={ghostRef}
@@ -239,97 +62,13 @@ export default function Home() {
               height: ghostConfig.h,
               pointerEvents: 'none',
               zIndex: 9999,
-              transform: `translate3d(${ghostConfig.x}px, ${ghostConfig.y}px, 0)`
+              opacity: 0.5,
             }}
           >
-            <Terminal 
-              terminalId={draggedTerminalId} 
-              state={terminalStates[draggedTerminalId]} 
-              updateState={updateTerminalState} 
-              onDragStart={() => {}} 
-              onDrop={() => {}} 
-              isGhost={true} 
-            />
+            <div className="w-full h-full border-2 border-dashed border-[#89b4fa] rounded-lg bg-[#1e1e2e]/50" />
           </div>
         )}
       </main>
     </div>
   );
 }
-
-let draggedTerminalIdLocal: string | null = null;
-
-const LayoutRenderer = ({ 
-  node, 
-  terminalStates,
-  updateTerminalState,
-  onDragStart, 
-  onDrop,
-  onDragEnd,
-  onResizeStart,
-  draggedTerminalId
-}: { 
-  node: LayoutNode;
-  terminalStates: Record<string, TerminalState>;
-  updateTerminalState: (id: string, updates: Partial<TerminalState>) => void;
-  onDragStart: (e: React.DragEvent, id: string) => void;
-  onDrop: (targetId: string, zone: DropZone) => void;
-  onDragEnd: () => void;
-  onResizeStart: (e: React.MouseEvent, id: string) => void;
-  draggedTerminalId: string | null;
-}) => {
-  if (node.type === "leaf") {
-    const isDragged = node.terminalId === draggedTerminalId;
-    return (
-      <div 
-        className={`w-full h-full relative transition-opacity duration-300`}
-        style={isDragged ? { opacity: 0, pointerEvents: 'none' } : { opacity: 1 }}
-        onMouseDown={(e) => onResizeStart(e, node.terminalId)}
-      >
-        <Terminal 
-          terminalId={node.terminalId} 
-          state={terminalStates[node.terminalId]}
-          updateState={(updates) => updateTerminalState(node.terminalId, updates)}
-          onDragStart={onDragStart} 
-          onDragEnd={onDragEnd}
-          onDrop={(targetId, zone) => {
-            if (draggedTerminalIdLocal && draggedTerminalIdLocal !== targetId) {
-               window.dispatchEvent(new CustomEvent('bsp-drop', { detail: { targetId, zone, droppedId: draggedTerminalIdLocal } }));
-            }
-          }} 
-        />
-      </div>
-    );
-  }
-
-  const isFirstDragged = node.first.type === "leaf" && node.first.terminalId === draggedTerminalId;
-  const isSecondDragged = node.second.type === "leaf" && node.second.terminalId === draggedTerminalId;
-  const gapClass = (isFirstDragged || isSecondDragged) ? "gap-0" : "gap-[8px]";
-
-  return (
-    <div className={`w-full h-full flex ${node.direction === "horizontal" ? "flex-row" : "flex-col"} ${gapClass} transition-all duration-300 ease-out`}>
-      <div 
-        className="transition-all duration-300 ease-out min-w-0 min-h-0" 
-        style={{ 
-          flex: isFirstDragged ? `0.00001 1 0%` : `${node.ratio} 1 0%`,
-          opacity: isFirstDragged ? 0 : 1,
-          pointerEvents: isFirstDragged ? 'none' : 'auto',
-          overflow: 'hidden'
-        }}
-      >
-        <LayoutRenderer node={node.first} terminalStates={terminalStates} updateTerminalState={updateTerminalState} onDragStart={onDragStart} onDrop={onDrop} onDragEnd={onDragEnd} onResizeStart={onResizeStart} draggedTerminalId={draggedTerminalId} />
-      </div>
-      <div 
-        className="transition-all duration-300 ease-out min-w-0 min-h-0" 
-        style={{ 
-          flex: isSecondDragged ? `0.00001 1 0%` : `${100 - node.ratio} 1 0%`,
-          opacity: isSecondDragged ? 0 : 1,
-          pointerEvents: isSecondDragged ? 'none' : 'auto',
-          overflow: 'hidden'
-        }}
-      >
-        <LayoutRenderer node={node.second} terminalStates={terminalStates} updateTerminalState={updateTerminalState} onDragStart={onDragStart} onDrop={onDrop} onDragEnd={onDragEnd} onResizeStart={onResizeStart} draggedTerminalId={draggedTerminalId} />
-      </div>
-    </div>
-  );
-};

@@ -1,7 +1,6 @@
 "use client";
 
 import React, { useState, useEffect, useRef } from "react";
-import { motion } from "framer-motion";
 import styles from "./Terminal.module.css";
 import type { DropZone } from "@/components/BSP/bspUtils";
 
@@ -53,7 +52,7 @@ interface TerminalLine {
   delay?: number;
 }
 
-import type { TerminalState } from "@/app/page";
+import type { TerminalState } from "@/hooks/useWindowManager";
 
 interface TerminalProps {
   terminalId: string;
@@ -62,10 +61,9 @@ interface TerminalProps {
   onDragEnd?: () => void;
   state: TerminalState;
   updateState: (updates: Partial<TerminalState>) => void;
-  isGhost?: boolean;
 }
 
-export default function Terminal({ terminalId, onDragStart, onDrop, onDragEnd, state, updateState, isGhost }: TerminalProps) {
+export default function Terminal({ terminalId, onDragStart, onDrop, onDragEnd, state, updateState }: TerminalProps) {
   const { isActive, visibleLines, activeTab } = state || { isActive: true, visibleLines: 0, activeTab: 0 };
   
   const setIsActive = (val: boolean) => updateState({ isActive: val });
@@ -74,8 +72,6 @@ export default function Terminal({ terminalId, onDragStart, onDrop, onDragEnd, s
   };
   const setActiveTab = (val: number) => updateState({ activeTab: val });
 
-  const [showDropZones, setShowDropZones] = useState(false);
-  const [dragHoverZone, setDragHoverZone] = useState<DropZone | null>(null);
   const [isCtrlPressed, setIsCtrlPressed] = useState(false);
   const bodyRef = useRef<HTMLDivElement>(null);
 
@@ -157,7 +153,8 @@ export default function Terminal({ terminalId, onDragStart, onDrop, onDragEnd, s
     const prevDelay = visibleLines > 0 ? (terminalLines[visibleLines - 1]?.delay ?? 0) : 0;
     const timer = setTimeout(() => setVisibleLines((prev) => prev + 1), delay - prevDelay);
     return () => clearTimeout(timer);
-  }, [visibleLines, terminalLines.length]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [visibleLines]);
 
   useEffect(() => {
     if (bodyRef.current) bodyRef.current.scrollTop = bodyRef.current.scrollHeight;
@@ -248,9 +245,11 @@ export default function Terminal({ terminalId, onDragStart, onDrop, onDragEnd, s
 
   return (
     <div
+      id={terminalId}
+      data-terminal-id={terminalId}
       className={`${styles.windowTile} ${isActive ? styles.active : ""} relative w-full h-full ${isCtrlPressed ? 'cursor-grab active:cursor-grabbing' : ''}`}
-      onClick={() => setIsActive(true)}
-      onMouseDown={() => setIsActive(true)}
+      onMouseEnter={() => !isActive && setIsActive(true)}
+      onMouseMove={() => !isActive && setIsActive(true)}
       draggable={isCtrlPressed}
       onDragStart={(e) => {
         e.stopPropagation();
