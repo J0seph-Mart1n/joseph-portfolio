@@ -15,18 +15,13 @@ export type TerminalState = {
   isActive: boolean;
 };
 
-const initialLayout: LayoutNode = {
-  id: "leaf-1",
-  type: "leaf",
-  terminalId: "term-1",
-};
+const initialLayout: LayoutNode | null = null;
+const MAX_WINDOWS = 8;
 
 export const useWindowManager = (containerRef: React.RefObject<HTMLElement>) => {
   const [layout, setLayout] = useState<LayoutNode | null>(initialLayout);
   
-  const [terminalStates, setTerminalStates] = useState<Record<string, TerminalState>>({
-    "term-1": { visibleLines: 0, activeTab: 0, isActive: true },
-  });
+  const [terminalStates, setTerminalStates] = useState<Record<string, TerminalState>>({});
 
   const [draggedTerminalId, setDraggedTerminalId] = useState<string | null>(null);
   const [ghostConfig, setGhostConfig] = useState<{w: number, h: number, x: number, y: number} | null>(null);
@@ -79,6 +74,8 @@ export const useWindowManager = (containerRef: React.RefObject<HTMLElement>) => 
           const activeId = Object.keys(states).find(id => states[id].isActive);
 
           if (e.code === 'KeyT') {
+            if (Object.keys(states).length >= MAX_WINDOWS) return; // Enforce limit
+
             const newId = `term-${Date.now()}`;
             
             if (!activeId) {
