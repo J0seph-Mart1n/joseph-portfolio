@@ -8,20 +8,18 @@ import {
   getSplitRatio, 
   updateSplitRatio 
 } from "@/components/BSP/bspUtils";
+import { useWorkspaceManager, TerminalState } from "./useWorkspaceManager";
+export type { TerminalState };
 
-export type TerminalState = {
-  visibleLines: number;
-  activeTab: number;
-  isActive: boolean;
-};
-
-const initialLayout: LayoutNode | null = null;
 const MAX_WINDOWS = 8;
 
-export const useWindowManager = (containerRef: React.RefObject<HTMLElement>) => {
-  const [layout, setLayout] = useState<LayoutNode | null>(initialLayout);
-  
-  const [terminalStates, setTerminalStates] = useState<Record<string, TerminalState>>({});
+export const useWindowManager = (containerRef: React.RefObject<HTMLElement | null>) => {
+  const { 
+    setActiveWorkspace, 
+    layout, 
+    terminalStates, 
+    updateWorkspaceState 
+  } = useWorkspaceManager();
 
   const [draggedTerminalId, setDraggedTerminalId] = useState<string | null>(null);
   const [ghostConfig, setGhostConfig] = useState<{w: number, h: number, x: number, y: number} | null>(null);
@@ -30,7 +28,7 @@ export const useWindowManager = (containerRef: React.RefObject<HTMLElement>) => 
   const mousePosRef = useRef({ x: 0, y: 0 });
 
   const updateTerminalState = useCallback((id: string, updates: Partial<TerminalState>) => {
-    setTerminalStates(prev => {
+    updateWorkspaceState((prevLayout) => prevLayout, (prev) => {
       if (updates.isActive === true) {
         const next = { ...prev };
         for (const key in next) {
@@ -43,7 +41,7 @@ export const useWindowManager = (containerRef: React.RefObject<HTMLElement>) => 
         [id]: { ...prev[id], ...updates }
       };
     });
-  }, []);
+  }, [updateWorkspaceState]);
 
   // Resizing state
   const [resizingState, setResizingState] = useState<{
@@ -58,30 +56,47 @@ export const useWindowManager = (containerRef: React.RefObject<HTMLElement>) => 
   const [isCtrlPressed, setIsCtrlPressed] = useState(false);
 
   const terminalStatesRef = useRef(terminalStates);
+  const layoutRef = useRef(layout);
   useEffect(() => {
     terminalStatesRef.current = terminalStates;
-  }, [terminalStates]);
+    layoutRef.current = layout;
+  }, [terminalStates, layout]);
 
   // Keyboard monitors
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => { 
       if (e.key === "Control") setIsCtrlPressed(true); 
 
+      // Support Shift+Number globally to switch workspaces here too
+      if (e.shiftKey && e.code.startsWith('Digit')) {
+        const digit = parseInt(e.code.replace('Digit', ''), 10);
+        if (digit >= 1 && digit <= 9) {
+          e.preventDefault();
+          setActiveWorkspace(digit);
+          window.dispatchEvent(new CustomEvent('workspace-change', { detail: digit }));
+          return;
+        }
+      }
+
       if (e.shiftKey && !e.ctrlKey && !e.altKey && !e.metaKey) {
         if (e.code === 'KeyT' || e.code === 'KeyQ') {
           e.preventDefault();
           const states = terminalStatesRef.current;
+          const currentLayout = layoutRef.current;
           const activeId = Object.keys(states).find(id => states[id].isActive);
 
           if (e.code === 'KeyT') {
             if (Object.keys(states).length >= MAX_WINDOWS) return; // Enforce limit
 
-            const newId = `term-${Date.now()}`;
+            // Adding a random portion makes newId perfectly unique even for sub-millisecond macro repeats
+            const newId = `term-${Date.now()}-${Math.floor(Math.random() * 1000000)}`;
             
-            if (!activeId) {
+            if (!activeId || !currentLayout) {
               // No windows exist — create a fresh one
-              setTerminalStates({ [newId]: { visibleLines: 0, activeTab: 0, isActive: true } });
-              setLayout({ id: newId, type: "leaf", terminalId: newId });
+              updateWorkspaceState(
+                (prevLayout) => prevLayout ? prevLayout : { id: newId, type: "leaf", terminalId: newId },
+                (prev) => Object.keys(prev).length > 0 ? prev : { [newId]: { visibleLines: 0, activeTab: 0, isActive: true } }
+              );
               return;
             }
 
@@ -99,27 +114,28 @@ export const useWindowManager = (containerRef: React.RefObject<HTMLElement>) => 
               zone = mouseY < rect.top + rect.height / 2 ? "top" : "bottom";
             }
             
-            setTerminalStates(prev => {
-              const next = { ...prev };
-              for (const k in next) next[k] = { ...next[k], isActive: false };
-              return { ...next, [newId]: { visibleLines: 0, activeTab: 0, isActive: true } };
-            });
+            updateWorkspaceState(
+              (prevLayout) => prevLayout ? (splitNode(prevLayout, activeId, newId, zone) || prevLayout) : { id: newId, type: "leaf", terminalId: newId },
+              (prev) => {
+                const next = { ...prev };
+                for (const k in next) next[k] = { ...next[k], isActive: false };
+                return { ...next, [newId]: { visibleLines: 0, activeTab: 0, isActive: true } };
+              }
+            );
             
-            setLayout(prev => prev ? splitNode(prev, activeId, newId, zone) : prev);
           } else if (e.code === 'KeyQ') {
             if (!activeId) return;
-            setLayout(prev => {
-              if (!prev) return prev;
-              const newLayout = removeNode(prev, activeId);
-              return newLayout; // can be null if last window
-            });
-            setTerminalStates(prev => {
-              const next = { ...prev };
-              delete next[activeId];
-              const first = Object.keys(next)[0];
-              if (first) next[first] = { ...next[first], isActive: true };
-              return next;
-            });
+            
+            updateWorkspaceState(
+              (prevLayout) => prevLayout ? removeNode(prevLayout, activeId) : prevLayout,
+              (prev) => {
+                const next = { ...prev };
+                delete next[activeId];
+                const first = Object.keys(next)[0];
+                if (first) next[first] = { ...next[first], isActive: true };
+                return next;
+              }
+            );
           }
         }
       }
@@ -141,10 +157,9 @@ export const useWindowManager = (containerRef: React.RefObject<HTMLElement>) => 
       window.removeEventListener("blur", handleBlur);
       window.removeEventListener("mousemove", handleMouseMoveGlobal);
     };
-  }, []);
+  }, [updateWorkspaceState]);
 
-  // Re-evaluate focus when layout changes (e.g. window closed or added)
-  // Check immediately and after CSS transition completes
+  // Re-evaluate focus when layout changes
   useEffect(() => {
     const checkFocus = () => {
       const el = document.elementFromPoint(mousePosRef.current.x, mousePosRef.current.y);
@@ -170,10 +185,10 @@ export const useWindowManager = (containerRef: React.RefObject<HTMLElement>) => 
     const onBspDrop = (e: Event) => {
       const { targetId, zone, droppedId } = (e as CustomEvent).detail;
       
-      setLayout((prev) => {
-        if (!prev) return prev;
-        const newLayout = removeNode(prev, droppedId);
-        if (!newLayout) return prev;
+      updateWorkspaceState((prevLayout) => {
+        if (!prevLayout) return prevLayout;
+        const newLayout = removeNode(prevLayout, droppedId);
+        if (!newLayout) return prevLayout;
         return splitNode(newLayout, targetId, droppedId, zone) || newLayout;
       });
       setDraggedTerminalId(null);
@@ -194,7 +209,7 @@ export const useWindowManager = (containerRef: React.RefObject<HTMLElement>) => 
       window.removeEventListener('bsp-drop', onBspDrop);
       window.removeEventListener("dragover", handleGlobalDragOver);
     };
-  }, []);
+  }, [updateWorkspaceState]);
 
   const handleDragStart = useCallback((e: React.DragEvent, terminalId: string) => {
     const img = new Image();
@@ -255,7 +270,7 @@ export const useWindowManager = (containerRef: React.RefObject<HTMLElement>) => 
         newLayout = updateSplitRatio(newLayout, resizingState.vSplitId, newVRatio);
       }
 
-      setLayout(newLayout);
+      updateWorkspaceState(newLayout);
     };
 
     const handleMouseUp = () => {
@@ -270,7 +285,7 @@ export const useWindowManager = (containerRef: React.RefObject<HTMLElement>) => 
       window.removeEventListener("mousemove", handleMouseMove);
       window.removeEventListener("mouseup", handleMouseUp);
     };
-  }, [resizingState, layout, containerRef]);
+  }, [resizingState, layout, containerRef, updateWorkspaceState]);
 
   const handleResizeStart = useCallback((e: React.MouseEvent, terminalId: string) => {
     if (e.ctrlKey && e.button === 2) {

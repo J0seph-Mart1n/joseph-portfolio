@@ -75,16 +75,14 @@ export default function Waybar() {
   }, []);
 
   useEffect(() => {
-    const handleKeyDown = (e: KeyboardEvent) => {
-      // Check for Ctrl (ctrlKey) + number 1-9
-      if (e.ctrlKey && e.key >= '1' && e.key <= '9') {
-        e.preventDefault();
-        setActiveWorkspace(parseInt(e.key, 10));
+    const handleWorkspaceChange = (e: Event) => {
+      const customEvent = e as CustomEvent<number>;
+      if (customEvent.detail >= 1 && customEvent.detail <= 9) {
+        setActiveWorkspace(customEvent.detail);
       }
     };
-
-    window.addEventListener('keydown', handleKeyDown);
-    return () => window.removeEventListener('keydown', handleKeyDown);
+    window.addEventListener('workspace-change', handleWorkspaceChange);
+    return () => window.removeEventListener('workspace-change', handleWorkspaceChange);
   }, []);
 
   return (
@@ -105,7 +103,10 @@ export default function Waybar() {
               <div 
                 key={ws} 
                 className={`${styles.workspace} ${ws === activeWorkspace ? styles.active : ''}`}
-                onClick={() => setActiveWorkspace(ws)}
+                onClick={() => {
+                  setActiveWorkspace(ws);
+                  window.dispatchEvent(new CustomEvent('workspace-change', { detail: ws }));
+                }}
               >
                 {ws}
               </div>
