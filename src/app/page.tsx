@@ -1,9 +1,24 @@
 "use client";
 
-import React, { useRef } from "react";
+import React, { useRef, useState } from "react";
 import Waybar from "@/components/Waybar/Waybar";
 import LayoutRenderer from "@/components/BSP/LayoutRenderer";
 import { useWindowManager } from "@/hooks/useWindowManager";
+import { motion, AnimatePresence } from "framer-motion";
+
+const variants = {
+  enter: (direction: number) => ({
+    x: direction > 0 ? "100vw" : "-100vw",
+  }),
+  center: {
+    zIndex: 1,
+    x: 0,
+  },
+  exit: (direction: number) => ({
+    zIndex: 0,
+    x: direction < 0 ? "100vw" : "-100vw",
+  })
+};
 
 export default function Home() {
   const containerRef = useRef<HTMLElement>(null);
@@ -19,8 +34,15 @@ export default function Home() {
     handleDragEnd,
     handleResizeStart,
     resizingState,
-    isCtrlPressed
+    isCtrlPressed,
+    activeWorkspace
   } = useWindowManager(containerRef);
+
+  const [tuple, setTuple] = useState([activeWorkspace, activeWorkspace]);
+  if (tuple[1] !== activeWorkspace) {
+    setTuple([tuple[1], activeWorkspace]);
+  }
+  const direction = tuple[1] > tuple[0] ? 1 : -1;
 
   return (
     <div className="relative w-full h-screen bg-[#1e1e2e] overflow-hidden font-sans">
@@ -33,24 +55,39 @@ export default function Home() {
       <main 
         ref={containerRef}
         onContextMenu={(e) => { if (e.ctrlKey) e.preventDefault(); }}
-        className={`relative z-10 w-full h-[calc(100vh-60px)] mt-[52px] p-[8px] ${(resizingState || isCtrlPressed) ? 'cursor-crosshair select-none' : ''}`}
+        className={`relative z-10 w-full h-[calc(100vh-60px)] mt-[52px] ${(resizingState || isCtrlPressed) ? 'cursor-crosshair select-none' : ''} overflow-hidden`}
       >
-        {layout ? (
-          <LayoutRenderer 
-            node={layout} 
-            terminalStates={terminalStates}
-            updateTerminalState={updateTerminalState}
-            onDragStart={handleDragStart}
-            onDragEnd={handleDragEnd}
-            onDrop={() => {}}
-            draggedTerminalId={draggedTerminalId}
-            onResizeStart={handleResizeStart}
-          />
-        ) : (
-          <div className="w-full h-full flex items-center justify-center text-[#6c7086] text-lg font-mono">
-            Press Shift + T to open a new window
-          </div>
-        )}
+        <AnimatePresence initial={false} custom={direction}>
+          <motion.div
+            key={activeWorkspace}
+            custom={direction}
+            variants={variants}
+            initial="enter"
+            animate="center"
+            exit="exit"
+            transition={{
+              x: { type: "spring", stiffness: 300, damping: 30 },
+            }}
+            className="absolute inset-0 w-full h-full p-[8px]"
+          >
+            {layout ? (
+              <LayoutRenderer 
+                node={layout} 
+                terminalStates={terminalStates}
+                updateTerminalState={updateTerminalState}
+                onDragStart={handleDragStart}
+                onDragEnd={handleDragEnd}
+                onDrop={() => {}}
+                draggedTerminalId={draggedTerminalId}
+                onResizeStart={handleResizeStart}
+              />
+            ) : (
+              <div className="w-full h-full flex items-center justify-center text-[#6c7086] text-lg font-mono">
+                Press Shift + T to open a new window
+              </div>
+            )}
+          </motion.div>
+        </AnimatePresence>
         {draggedTerminalId && ghostConfig && (
           <div
             ref={ghostRef}

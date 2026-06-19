@@ -18,7 +18,8 @@ export const useWindowManager = (containerRef: React.RefObject<HTMLElement | nul
     setActiveWorkspace, 
     layout, 
     terminalStates, 
-    updateWorkspaceState 
+    updateWorkspaceState,
+    activeWorkspace
   } = useWorkspaceManager();
 
   const [draggedTerminalId, setDraggedTerminalId] = useState<string | null>(null);
@@ -315,6 +316,7 @@ export const useWindowManager = (containerRef: React.RefObject<HTMLElement | nul
     handleDragEnd,
     handleResizeStart,
     resizingState,
-    isCtrlPressed
+    isCtrlPressed,
+    activeWorkspace
   };
 };
