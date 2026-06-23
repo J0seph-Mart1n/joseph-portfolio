@@ -94,56 +94,8 @@ export default function Terminal({ terminalId, onDragStart, onDrop, onDragEnd, s
   const terminalLines: TerminalLine[] = [
     { type: "prompt", user: "joseph", host: "arch", path: "~", command: "neofetch", delay: 0 },
     { type: "neofetch", delay: 200 },
-    { type: "prompt", user: "joseph", host: "arch", path: "~", command: "cat about.txt", delay: 400 },
-    {
-      type: "output",
-      content: (
-        <>
-          <span className={styles.outputHighlight}>Hey! I&apos;m Joseph 👋</span><br />
-          <span className={styles.output}>A passionate developer who loves building</span><br />
-          <span className={styles.output}>beautiful, performant software. I run Arch btw.</span>
-        </>
-      ),
-      delay: 600,
-    },
-    { type: "blank", delay: 700 },
-    { type: "prompt", user: "joseph", host: "arch", path: "~", command: "ls ./skills/", delay: 800 },
-    {
-      type: "output",
-      content: (
-        <>
-          <span className={styles.outputAccent}>TypeScript </span>
-          <span className={styles.outputGreen}>React </span>
-          <span className={styles.outputMauve}>Next.js </span>
-          <span className={styles.outputHighlight}>Node.js </span>
-          <span className={styles.outputRed}>Rust </span>
-          <span className={styles.outputAccent}>Python</span><br />
-          <span className={styles.outputGreen}>Linux </span>
-          <span className={styles.outputMauve}>Docker </span>
-          <span className={styles.outputHighlight}>Git </span>
-          <span className={styles.outputRed}>PostgreSQL </span>
-          <span className={styles.outputAccent}>Firebase</span>
-        </>
-      ),
-      delay: 1000,
-    },
-    { type: "blank", delay: 1100 },
-    { type: "prompt", user: "joseph", host: "arch", path: "~", command: "cat contact.json", delay: 1200 },
-    {
-      type: "output",
-      content: (
-        <>
-          <span className={styles.outputDim}>{"{"}</span><br />
-          <span className={styles.outputDim}> &quot;</span><span className={styles.outputAccent}>github</span><span className={styles.outputDim}>&quot;: &quot;</span><span className={styles.link}>github.com/joseph</span><span className={styles.outputDim}>&quot;,</span><br />
-          <span className={styles.outputDim}> &quot;</span><span className={styles.outputAccent}>email</span><span className={styles.outputDim}>&quot;: &quot;</span><span className={styles.link}>hello@joseph.dev</span><span className={styles.outputDim}>&quot;,</span><br />
-          <span className={styles.outputDim}> &quot;</span><span className={styles.outputAccent}>linkedin</span><span className={styles.outputDim}>&quot;: &quot;</span><span className={styles.link}>linkedin.com/in/joseph</span><span className={styles.outputDim}>&quot;</span><br />
-          <span className={styles.outputDim}>{"}"}</span>
-        </>
-      ),
-      delay: 1400,
-    },
-    { type: "blank", delay: 1500 },
-    { type: "prompt", user: "joseph", host: "arch", path: "~", command: "", delay: 1600 },
+    { type: "blank", delay: 300 },
+    { type: "prompt", user: "joseph", host: "arch", path: "~", command: "", delay: 400 },
   ];
 
   useEffect(() => {
@@ -164,16 +116,15 @@ export default function Terminal({ terminalId, onDragStart, onDrop, onDragEnd, s
     const infoLines = [
       { label: "", value: <><span className={styles.outputAccent}>joseph</span><span className={styles.outputDim}>@</span><span className={styles.outputMauve}>arch</span></> },
       { label: "", value: <span className={styles.separator}>──────────────</span> },
-      { label: "OS", value: "Arch Linux x86_64" },
-      { label: "Host", value: "Portfolio v2.0" },
-      { label: "Kernel", value: "6.14.5-arch1-1" },
-      { label: "Shell", value: "zsh 5.9" },
+      { label: "Name", value: "Joseph Martin" },
+      { label: "Host", value: "Portfolio" },
+      { label: "Kernel", value: "Linux" },
       { label: "WM", value: "Hyprland" },
       { label: "Terminal", value: "kitty" },
       { label: "Theme", value: "Catppuccin Mocha" },
       { label: "Editor", value: "Neovim" },
       { label: "Role", value: "Full-Stack Developer" },
-      { label: "Location", value: "India 🇮🇳" },
+      { label: "Location", value: "India, Maharastra, Pune 🇮🇳" },
     ];
 
     return (
