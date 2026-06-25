@@ -1,10 +1,24 @@
 import { useState, useCallback, useEffect } from "react";
 import { LayoutNode } from "@/components/BSP/bspUtils";
 
+import { ReactNode } from "react";
+
+export interface TerminalLine {
+  type: "prompt" | "output" | "neofetch" | "blank";
+  user?: string;
+  host?: string;
+  path?: string;
+  command?: string;
+  content?: ReactNode;
+  delay?: number;
+}
+
 export type TerminalState = {
   visibleLines: number;
   activeTab: number;
   isActive: boolean;
+  history: TerminalLine[];
+  currentInput: string;
 };
 
 export type WorkspaceState = {

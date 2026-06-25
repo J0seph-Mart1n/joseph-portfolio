@@ -42,16 +42,7 @@ const ARCH_ASCII = `                  -\`
 \`++:.                           \`-/+/
 .\`                                 \`/`;
 
-interface TerminalLine {
-  type: "prompt" | "output" | "neofetch" | "blank";
-  user?: string;
-  host?: string;
-  path?: string;
-  command?: string;
-  content?: React.ReactNode;
-  delay?: number;
-}
-
+import { TerminalLine } from "@/hooks/useWorkspaceManager";
 import type { TerminalState } from "@/hooks/useWindowManager";
 
 interface TerminalProps {
@@ -64,13 +55,26 @@ interface TerminalProps {
 }
 
 export default function Terminal({ terminalId, onDragStart, onDrop, onDragEnd, state, updateState }: TerminalProps) {
-  const { isActive, visibleLines, activeTab } = state || { isActive: true, visibleLines: 0, activeTab: 0 };
+  const { isActive, visibleLines, activeTab, history, currentInput } = state || { 
+    isActive: true, 
+    visibleLines: 0, 
+    activeTab: 0,
+    history: [],
+    currentInput: ""
+  };
   
   const setIsActive = (val: boolean) => updateState({ isActive: val });
   const setVisibleLines = (updater: number | ((prev: number) => number)) => {
     updateState({ visibleLines: typeof updater === 'function' ? updater(visibleLines) : updater });
   };
   const setActiveTab = (val: number) => updateState({ activeTab: val });
+  
+  const setCurrentInput = (val: string) => updateState({ currentInput: val });
+  const setHistory = (updater: TerminalLine[] | ((prev: TerminalLine[]) => TerminalLine[])) => {
+    updateState({ history: typeof updater === 'function' ? updater(history || []) : updater });
+  };
+
+  const inputRef = useRef<HTMLInputElement>(null);
 
   const [isCtrlPressed, setIsCtrlPressed] = useState(false);
   const bodyRef = useRef<HTMLDivElement>(null);
@@ -95,7 +99,6 @@ export default function Terminal({ terminalId, onDragStart, onDrop, onDragEnd, s
     { type: "prompt", user: "joseph", host: "arch", path: "~", command: "neofetch", delay: 0 },
     { type: "neofetch", delay: 200 },
     { type: "blank", delay: 300 },
-    { type: "prompt", user: "joseph", host: "arch", path: "~", command: "", delay: 400 },
   ];
 
   useEffect(() => {
@@ -122,7 +125,6 @@ export default function Terminal({ terminalId, onDragStart, onDrop, onDragEnd, s
       { label: "WM", value: "Hyprland" },
       { label: "Terminal", value: "kitty" },
       { label: "Theme", value: "Catppuccin Mocha" },
-      { label: "Editor", value: "Neovim" },
       { label: "Role", value: "Full-Stack Developer" },
       { label: "Location", value: "India, Maharastra, Pune 🇮🇳" },
     ];
@@ -238,8 +240,57 @@ export default function Terminal({ terminalId, onDragStart, onDrop, onDragEnd, s
       </div>
 
       {/* Terminal Body */}
-      <div className={styles.terminalBody} ref={bodyRef}>
+      <div className={styles.terminalBody} ref={bodyRef} onClick={() => inputRef.current?.focus()}>
         {terminalLines.slice(0, visibleLines).map((line, i) => renderLine(line, i))}
+        
+        {isFinished && (history || []).map((line, i) => renderLine(line, terminalLines.length + i))}
+
+        {isFinished && (
+          <div className={styles.line}>
+            <span className={styles.prompt}>
+              <span className={styles.outputAccent}>joseph</span><span className={styles.outputDim}>@</span><span className={styles.outputMauve}>arch</span><span className={styles.outputDim}> </span><span className={styles.outputAccent}>~</span>
+            </span>
+            <span className={styles.promptSymbol}> ❯ </span>
+            <span className={styles.command}>{currentInput || ""}</span>
+            <span className={styles.cursor} />
+            <input 
+              ref={inputRef}
+              autoFocus
+              className="absolute opacity-0 pointer-events-none w-0 h-0"
+              value={currentInput || ""}
+              onChange={(e) => setCurrentInput(e.target.value)}
+              onKeyDown={(e) => {
+                if (e.key === "Enter") {
+                   const cmd = (currentInput || "").trim();
+                   const newHistory = [...(history || [])];
+                   newHistory.push({ type: "prompt", user: "joseph", host: "arch", path: "~", command: currentInput || "" });
+                   if (cmd === "clear") {
+                     setHistory([]);
+                   } else if (cmd === "neofetch") {
+                     newHistory.push({ type: "neofetch" });
+                     newHistory.push({ type: "blank" });
+                     setHistory(newHistory);
+                   } else if (cmd !== "") {
+                     newHistory.push({ type: "output", content: `bash: ${cmd}: command not found` });
+                     setHistory(newHistory);
+                   } else {
+                     setHistory(newHistory);
+                   }
+                   setCurrentInput("");
+                   
+                   // Auto-scroll to bottom
+                   setTimeout(() => {
+                     if (bodyRef.current) {
+                       bodyRef.current.scrollTop = bodyRef.current.scrollHeight;
+                     }
+                   }, 0);
+                }
+              }}
+              spellCheck={false}
+              autoComplete="off"
+            />
+          </div>
+        )}
       </div>
 
       {/* Status Bar */}
